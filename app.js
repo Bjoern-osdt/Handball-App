@@ -12,12 +12,19 @@ import {
 import { PLAYER_STAT_TYPES } from "./src/data/models.js";
 import { buildGoogleCalendarUrl, seasonCalendarLinks } from "./src/calendar.js";
 import { looselyEquals } from "./src/teamNameUtils.js";
+import { parseTeamPortraitLink } from "./src/parsers/nuligaUrlParser.js";
+import { runSync } from "./src/sync.js";
+
+const LAST_SYNC_KEY = "lastGlobalSyncAt";
+const SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000; // 4 Stunden, wie in den anderen Varianten
+const SYNC_TAG = "handball-sync";
 
 const root = document.getElementById("app-root");
 const pageTitle = document.getElementById("pageTitle");
 const backBtn = document.getElementById("backBtn");
 const topbarActions = document.getElementById("topbarActions");
 const toastEl = document.getElementById("toast");
+const notifyBanner = document.getElementById("notifyBanner");
 
 let toastTimer = null;
 function showToast(message) {
@@ -68,6 +75,28 @@ function clearRoot() {
   root.innerHTML = "";
 }
 
+/** Öffnet einen Link in einem neuen Tab - Pendant zu chrome.tabs.create({url}). */
+function openLink(url) {
+  window.open(url, "_blank", "noopener");
+}
+
+// ---------------------------------------------------------------------------
+// Web Share Target: kam die App über "Teilen" aus Chrome mit einem
+// nuLiga-Link, wird der Link direkt ins "Team hinzufügen"-Formular
+// übernommen (Pendant zum Android-Teilen-Intent bzw. zum Kontextmenü der
+// Chrome-Erweiterung). Siehe manifest.webmanifest ("share_target").
+// ---------------------------------------------------------------------------
+
+(function handleShareTarget() {
+  const params = new URLSearchParams(location.search);
+  const shared = params.get("url") || params.get("text") || params.get("title");
+  if (!shared) return;
+  history.replaceState(null, "", location.pathname + location.hash);
+  const parsed = parseTeamPortraitLink(shared);
+  const link = parsed ? parsed.normalizedUrl : shared;
+  location.hash = `#add?link=${encodeURIComponent(link)}`;
+})();
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -103,6 +132,90 @@ async function router() {
 
 window.addEventListener("hashchange", router);
 router();
+
+// ---------------------------------------------------------------------------
+// Service Worker: Installierbarkeit, Offline-Hülle, Hintergrund-Sync
+// ---------------------------------------------------------------------------
+
+let swRegistration = null;
+
+async function initServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register("./service-worker.js", { type: "module" });
+  } catch (err) {
+    console.warn("Service Worker konnte nicht registriert werden:", err);
+    return;
+  }
+
+  // Tippen auf eine Benachrichtigung schickt uns hier eine Nachricht mit dem
+  // Ziel-Hash (siehe service-worker.js, notificationclick).
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data && event.data.type === "navigate") {
+      navigate(event.data.hash || "#/");
+    }
+  });
+
+  // Periodic Background Sync: nur in Chrome/Edge auf Android, nur für
+  // installierte Apps, und nur wenn Chrome die Seite als "oft genutzt"
+  // einstuft - rein optionaler Zusatz, kein Ersatz für den zuverlässigen
+  // Sync-beim-Öffnen unten.
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if ("periodicSync" in reg && "permissions" in navigator) {
+      const status = await navigator.permissions.query({ name: "periodic-background-sync" });
+      if (status.state === "granted") {
+        await reg.periodicSync.register(SYNC_TAG, { minInterval: SYNC_INTERVAL_MS });
+      }
+    }
+  } catch (err) {
+    // Nicht unterstützt oder nicht erlaubt - kein Problem, siehe Hinweis oben.
+    console.info("Periodic Background Sync nicht verfügbar:", err.message);
+  }
+}
+
+async function syncIfStale() {
+  try {
+    const stored = localStorage.getItem(LAST_SYNC_KEY);
+    const lastSync = stored ? Number(stored) : 0;
+    if (lastSync && Date.now() - lastSync < SYNC_INTERVAL_MS) return;
+
+    const reg = swRegistration || (await navigator.serviceWorker.ready.catch(() => null));
+    await runSync(reg);
+    localStorage.setItem(LAST_SYNC_KEY, String(Date.now()));
+
+    // Falls wir gerade auf der Übersicht sind, Ergebnisse sofort anzeigen.
+    if (!parseHash().parts.length) router();
+  } catch (err) {
+    console.warn("Sync beim Öffnen fehlgeschlagen:", err);
+  }
+}
+
+initServiceWorker().then(syncIfStale);
+
+// ---------------------------------------------------------------------------
+// Benachrichtigungen aktivieren (Banner)
+// ---------------------------------------------------------------------------
+
+function updateNotifyBanner() {
+  if (!("Notification" in window) || Notification.permission !== "default") {
+    notifyBanner.hidden = true;
+    return;
+  }
+  notifyBanner.hidden = false;
+}
+
+notifyBanner.querySelector("button.enable").addEventListener("click", async () => {
+  try {
+    await Notification.requestPermission();
+  } finally {
+    updateNotifyBanner();
+  }
+});
+notifyBanner.querySelector("button.dismiss").addEventListener("click", () => {
+  notifyBanner.hidden = true;
+});
+updateNotifyBanner();
 
 // ---------------------------------------------------------------------------
 // Favoriten-Übersicht
@@ -213,13 +326,11 @@ async function renderAddTeam(prefillLink) {
       errorBox,
       el("div", { class: "info-box" }, [
         "Tipp: Auf hvnb-handball.liga.nu die Mannschaftsseite („Mannschaftsportrait“) öffnen, Link kopieren und hier einfügen. " +
-          "Du kannst die App auch direkt auf einer solchen Seite über das Symbol in der Symbolleiste oder per Rechtsklick auf einen Team-Link öffnen – dann wird der Link automatisch übernommen.",
+          "Du kannst den Link auch direkt aus Chrome über „Teilen“ an diese App schicken, wenn sie installiert ist.",
       ]),
     ])
   );
 
-  // Parität zur Android-"Teilen"-Funktion: kam der Link aus dem Kontextmenü
-  // oder vom aktuell offenen Tab, wird er direkt übernommen.
   if (prefillLink) {
     submit();
   }
@@ -321,7 +432,7 @@ function renderScheduleTab(team, matches) {
         {
           class: "btn secondary",
           style: "margin-bottom:14px;",
-          onclick: () => chrome.tabs.create({ url: downloadUrl }),
+          onclick: () => openLink(downloadUrl),
         },
         "📅 Kompletten Spielplan abonnieren"
       )
@@ -377,7 +488,7 @@ function renderMatchCard(team, match) {
         {
           class: "icon-link",
           title: "Zum Google Kalender hinzufügen",
-          onclick: () => chrome.tabs.create({ url: calUrl }),
+          onclick: () => openLink(calUrl),
         },
         "🗓️"
       )
@@ -531,7 +642,7 @@ async function openVenueModal(team, match) {
       body.appendChild(
         el(
           "button",
-          { class: "btn", style: "margin-top:12px;width:100%;", onclick: () => chrome.tabs.create({ url: venue.mapsUrl }) },
+          { class: "btn", style: "margin-top:12px;width:100%;", onclick: () => openLink(venue.mapsUrl) },
           "🧭 Route planen"
         )
       );

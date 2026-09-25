@@ -277,3 +277,16 @@ table.data-table tr.own-team { background: var(--green-light); font-weight: 600;
 }
 
 .section-title { font-size: 13px; color: var(--text-muted); margin: 20px 0 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+.notify-banner {
+  background: var(--green-light);
+  color: var(--green-dark);
+  padding: 10px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.notify-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }

@@ -1,142 +1,134 @@
-# Handball Favoriten (Chrome-Erweiterung)
+# Handball Favoriten (PWA)
 
-Derselbe selbst gebaute Ersatz für die nicht mehr funktionierende **7m-App** wie das
-Android-Projekt – diesmal als **Chrome-Erweiterung** statt als App zum Installieren.
-Favoriten-Mannschaften des **Handballverbands Niedersachsen-Bremen (HVNB)** werden
-direkt von [nuLiga](https://hvnb-handball.liga.nu) geladen: Spielergebnisse, Tabelle,
-Spielerstatistiken, Spielorte/-zeiten und ein Ein-Klick-Export einzelner Spiele in den
-Google Kalender.
+Die Web-App-Version von [Handball Favoriten](../HandballFavoriten) als **installierbare Progressive
+Web App (PWA)** – kein Chrome-Extension-Rahmen, keine Android-Studio-Installation nötig. Einfach als
+Webseite hosten (z.B. GitHub Pages) und auf dem Handy in Chrome öffnen und "installieren".
 
-Es handelt sich um eine reine Client-Erweiterung (Manifest V3, kein Build-Schritt,
-kein Server, keine Cloud) – alle Daten liegen nur lokal im Speicher deines
-Chrome-Profils.
+Funktionsumfang identisch zu den anderen beiden Varianten: Favoriten-Mannschaften des HVNB per
+nuLiga-Link hinzufügen, Spielplan/Ergebnisse, Tabelle, Spielerstatistiken, Spielorte mit
+Routenplaner, Ein-Klick-Kalender-Export, Hintergrund-Sync + Benachrichtigungen.
 
-## Funktionen
+## Warum eine dritte Variante?
 
-- **Favoriten**: beliebig viele nuLiga-Teams hinzufügen, indem du den Link ihrer
-  "Mannschaftsportrait"-Seite einfügst.
-- **Schnell hinzufügen**: Bist du gerade auf einer nuLiga-Mannschaftsseite, übernimmt
-  ein Klick auf das Erweiterungssymbol automatisch den Link. Alternativ: Rechtsklick
-  auf einen Team-Link auf einer beliebigen HVNB-Seite → "Zu Handball Favoriten
-  hinzufügen".
-- **Spielplan & Ergebnisse**: kompletter Saisonspielplan inkl. Ergebnissen und
-  Halbzeitstand.
-- **Tabelle**: aktuelle Staffeltabelle, eigenes Team hervorgehoben.
-- **Spielerstatistiken**: Torschützenliste, 7m-Tore, Zeitstrafen, Gelbe/Rote Karten
-  je Staffel (Spieler des eigenen Vereins hervorgehoben).
-- **Spielorte**: Hallenadresse per Klick auf den Spielort, inkl. "Route planen"-Button
-  (öffnet Google Maps – der Link kommt direkt von nuLiga).
-- **Kalender-Export per Klick**: jedes einzelne Spiel öffnet per Klick einen
-  vorausgefüllten Google-Kalender-Termin zum Speichern – kein Google-Login, keine
-  Kalender-Berechtigung, kein OAuth nötig. Zusätzlich gibt es oben im Spielplan einen
-  Button, der den kompletten Saison-Spielplan als ICS-Datei direkt von nuLiga
-  herunterlädt (die gleiche Datei lässt sich in Google Kalender unter "Weitere
-  Kalender" → "Per URL" auch als laufendes Abo eintragen).
-- **Hintergrund-Sync & Benachrichtigungen**: alle 4 Stunden werden alle Favoriten im
-  Hintergrund aktualisiert; bei neu eingetragenen Ergebnissen und kurz vor Anstoß
-  (innerhalb von 2 Stunden) gibt es eine Desktop-Benachrichtigung. Ein Klick auf die
-  Benachrichtigung öffnet direkt das jeweilige Team.
+- **Native Android-App**: volle Kontrolle, aber du musst Android Studio installieren und die App
+  selbst bauen/übertragen.
+- **Chrome-Erweiterung**: funktioniert super auf dem **Desktop**, aber **Chrome auf Android
+  unterstützt gar keine Erweiterungen** – sie lässt sich auf dem Handy also nicht nutzen.
+- **Diese PWA**: läuft überall, wo es einen Browser gibt, inkl. Chrome auf Android. Über die
+  "App installieren"-Funktion von Chrome landet sie wie eine normale App auf dem Startbildschirm
+  deines Pixel 10 Pro – kein Play Store nötig.
 
-## Installation (Entwicklermodus – kein Chrome Web Store nötig)
+## Wichtig: CORS-Proxy
 
-1. Diesen Ordner (`HandballFavoritenWeb`) irgendwo entpacken/speichern, z.B. in
-   `Dokumente\Handball-Favoriten`.
-2. In Chrome `chrome://extensions` öffnen.
-3. Oben rechts **"Entwicklermodus"** aktivieren.
-4. **"Entpackte Erweiterung laden"** klicken und den Ordner `HandballFavoritenWeb`
-   auswählen (den Ordner mit `manifest.json` darin, nicht dessen übergeordneten
-   Ordner).
-5. Das Handball-Symbol erscheint in der Symbolleiste (ggf. über das Puzzle-Symbol
-   anheften). Ein Klick öffnet die App in einem neuen Tab.
+nuLiga sendet keine `Access-Control-Allow-Origin`-Header. Ein Browser lässt JavaScript auf einer
+normalen Webseite (anders als bei einer Chrome-Erweiterung mit `host_permissions`) deshalb nicht
+direkt auf `hvnb-handball.liga.nu` zugreifen ("CORS-Fehler"). Diese App leitet Anfragen deshalb
+über den kostenlosen, öffentlichen Proxy **[allorigins.win](https://allorigins.win)** um (einzige
+Stelle: `src/nuligaClient.js`).
 
-Da die Erweiterung nicht über den Chrome Web Store installiert wird, zeigt Chrome
-gelegentlich einen Hinweis auf "Erweiterungen im Entwicklermodus" – das ist normal
-und kein Fehler. Nach Code-Änderungen reicht ein Klick auf das Aktualisieren-Symbol
-bei der Erweiterung in `chrome://extensions`.
+Das ist ein Fremd-Dienst, den ich nicht kontrolliere – für ein privates Hobbyprojekt ist das ein
+üblicher, praktikabler Kompromiss, aber falls er mal down oder zu langsam ist, öffnet die App
+Fehlermeldungen statt Daten. Beheben:
 
-## Bedienung
+1. Anderen öffentlichen Proxy eintragen, z.B. `https://corsproxy.io/?url=` (Antwortformat prüfen,
+   ggf. `fetchDocument` in `src/nuligaClient.js` leicht anpassen).
+2. Robuster (empfohlen bei ernsthafter Nutzung): einen eigenen, kostenlosen
+   [Cloudflare Worker](https://developers.cloudflare.com/workers/) als Proxy deployen (wenige
+   Zeilen Code) und dessen URL eintragen – dann hängt nichts mehr an einem fremden Dienst.
 
-- **"+"** unten rechts → Link einer teamPortrait-Seite einfügen → "Hinzufügen".
-- Auf einen Favoriten tippen öffnet Spielplan/Tabelle/Statistik in drei Reitern.
-- Im Spielplan: Kalender-Symbol bei jedem Spiel für den Ein-Klick-Export, Klick auf
-  den Spielort-Chip für die Hallenadresse.
-- Symbol oben rechts (⟳) aktualisiert den aktuellen Favoriten bzw. (auf der
-  Übersicht) alle Favoriten auf einmal.
+## Lokal testen
+
+Kein Build-Schritt nötig, aber ein lokaler HTTP-Server ist Pflicht (Service Worker und
+`fetch()` funktionieren nicht über `file://`):
+
+```bash
+npx serve .
+# oder: python3 -m http.server 8080
+```
+
+Dann `http://localhost:PORT` im Browser öffnen.
+
+## Auf GitHub veröffentlichen (GitHub Pages)
+
+1. Neues Repository auf GitHub anlegen (oder VS Code/Android Studios "Auf GitHub freigeben"
+   nutzen) und den Inhalt dieses Ordners hochladen (`git init`, `git add .`, `git commit`,
+   `git push`, oder per VS-Code-Quellcode-Verwaltung → "Publish to GitHub").
+2. Im Repository: **Settings → Pages → Source** auf "Deploy from a branch" stellen, Branch `main`
+   und Ordner `/ (root)` wählen, speichern.
+3. Nach ein bis zwei Minuten ist die App unter `https://<dein-github-name>.github.io/<repo-name>/`
+   erreichbar (GitHub zeigt den Link direkt auf der Pages-Einstellungsseite an).
+
+**Wichtig:** GitHub Pages liefert automatisch HTTPS aus – das ist zwingend nötig, Service Worker
+und "App installieren" funktionieren nur über HTTPS (oder `localhost`).
+
+## Als App auf dem Pixel 10 Pro installieren
+
+1. Die GitHub-Pages-Adresse (siehe oben) in **Chrome** auf dem Pixel 10 Pro öffnen.
+2. Rechts oben aufs Drei-Punkte-Menü tippen → **"App installieren"** (bzw. "Zum Startbildschirm
+   hinzufügen", je nach Chrome-Version). Falls die App die Installierbarkeits-Kriterien erfüllt
+   (Manifest + Service Worker + HTTPS, hier alles vorhanden), erscheint der Punkt meist auch
+   automatisch als Vorschlag/Banner.
+3. Bestätigen – die App landet mit eigenem Icon auf dem Startbildschirm und startet ohne
+   Adressleiste, wie eine "echte" App.
+4. Optional: Beim ersten Start das Banner "Benachrichtigungen aktivieren" bestätigen, um
+   Push-artige lokale Benachrichtigungen bei neuen Ergebnissen zu erhalten.
+
+### Spiel-Link direkt aus Chrome teilen
+
+Ist die App installiert, taucht sie in Androids "Teilen"-Menü auf: auf einer
+nuLiga-Mannschaftsseite in Chrome auf Teilen tippen → "Handball Favoriten" auswählen → Link wird
+automatisch ins Hinzufügen-Formular übernommen (Pendant zur Teilen-Funktion der Android-App).
+
+## Hintergrund-Sync & Benachrichtigungen – Einschränkungen
+
+Anders als bei einer nativen App kann eine Web-App das Betriebssystem nicht zuverlässig zwingen,
+sie regelmäßig im Hintergrund aufzuwecken:
+
+- **Periodic Background Sync** (automatischer Sync alle paar Stunden, auch wenn die App nicht
+  offen ist) funktioniert nur in Chrome/Edge auf Android, nur für installierte Apps, und nur wenn
+  Chrome die Seite anhand deiner Nutzung als "oft verwendet" einstuft – ein Wert, den weder du
+  noch die App direkt erzwingen können.
+- **Zuverlässiger Fallback, der immer funktioniert**: Die App synchronisiert automatisch beim
+  Öffnen, wenn der letzte Abgleich länger als 4 Stunden her ist. Wer die App also regelmäßig
+  öffnet, bekommt trotzdem aktuelle Daten.
+
+Für garantiert zuverlässigen Hintergrund-Sync unabhängig vom Nutzungsverhalten bleibt die native
+Android-App (Ordner `HandballFavoriten`) die robustere Wahl.
 
 ## Architektur
 
 ```
-manifest.json      Manifest V3: Permissions, Background-Service-Worker, Icons
-background.js       Hintergrund-Sync (chrome.alarms), Benachrichtigungen,
-                     Öffnen der App, Kontextmenü
-app.html/css/js      Die eigentliche App als Single-Page-UI (Hash-Routing,
-                     kein Framework, keine Build-Tools nötig)
+index.html         App-Hülle (Topbar, Toast, Benachrichtigungs-Banner)
+app.js              Hash-Router + komplette UI (Favoriten/Hinzufügen/Team-Detail)
+app.css             Styling
+manifest.webmanifest   PWA-Manifest (Icons, Name, share_target, Startverhalten)
+service-worker.js   Cache der App-Hülle, periodischer Sync, Benachrichtigungs-Klicks
 src/
-  nuligaClient.js     Lädt eine nuLiga-Seite (fetch) und parst sie (DOMParser)
-  calendar.js         Google-Kalender-Link + ICS-Abo-Links
-  notifications.js    chrome.notifications-Wrapper
-  teamNameUtils.js    unscharfer Namensvergleich fürs Hervorheben des eigenen Teams
+  nuligaClient.js    fetch() über den CORS-Proxy (siehe oben)
+  sync.js            gemeinsame Sync-Logik (App-Vordergrund + Service Worker)
+  notifications.js   registration.showNotification()-Wrapper
+  calendar.js         Google-Kalender-Links (unverändert von der Erweiterungs-Version)
+  teamNameUtils.js    (unverändert)
   data/
-    models.js         Datentypen (JSDoc) + die 5 Spielerstatistik-Typen
-    repository.js      chrome.storage.local als "Datenbank" + Sync-/Diff-Logik
-  parsers/
-    htmlTextUtils.js       Text-Normalisierung, <br>-Zeilen, Query-Parameter
-    nuligaUrlParser.js     Erkennt/baut teamPortrait-/groupPage-/Statistik-/
-                           courtInfo-URLs
-    teamPortraitParser.js  Vereins-/Liganame, Spielplan, Kalenderlinks
-    groupTableParser.js    Staffeltabelle
-    playerStatsParser.js   Spieler-Ranglisten (spaltenreihenfolge-unabhängig)
-    venueParser.js         Hallenadresse
+    models.js          Datentypen + Statistik-Definitionen (unverändert)
+    storage.js          IndexedDB-Speicher (Ersatz für chrome.storage.local)
+    repository.js       Lade-/Abgleichslogik (unverändert bis auf storage.js-Import)
+  parsers/             alle 6 nuLiga-HTML-Parser (unverändert von der Erweiterungs-Version)
 ```
 
-Da nuLiga keine offizielle API anbietet, liest die Erweiterung die HTML-Seiten
-direkt aus. Folgende nuLiga-Seiten werden verwendet:
-
-| Seite | Zweck |
-|---|---|
-| `teamPortrait` | Vereins-/Liganame, Spielplan/Ergebnisse, Kalenderlinks |
-| `groupPage` | Staffeltabelle |
-| `groupMeetingStatistics` | Spieler-Ranglisten (Tore, 7m-Tore, Zeitstrafen, Karten) |
-| `courtInfo` | Hallenadresse |
-
-Diese HTML-Struktur wurde am **20.09.2026 live gegen hvnb-handball.liga.nu geprüft**
-(nicht nur angenommen): Alle Parser wurden gegen reale, aus der Live-Seite entnommene
-Beispiel-Daten mit einer automatisierten Node.js-Testsuite (jsdom) verifiziert – u.a.
-die Besonderheit, dass die Spalten der Spielerstatistik-Seiten je nach Statistik-Typ
-in unterschiedlicher Reihenfolge stehen (deshalb werden sie über die
-Spaltenüberschriften erkannt, nie über eine feste Position). Ändert nuLiga sein
-Layout grundlegend, müssen ggf. die Parser in `src/parsers/` angepasst werden.
-
-## Warum eine Erweiterung statt einer normalen Webseite?
-
-Chrome-Erweiterungen mit in `manifest.json` deklarierten `host_permissions` dürfen
-Cross-Origin-Anfragen an genau diese Domains stellen, ohne dass CORS (das nuLiga
-nicht für Fremdzugriffe freigibt) das verhindert. Eine ganz normale, irgendwo
-gehostete Webseite könnte nuLiga dagegen nicht direkt per JavaScript abrufen und
-bräuchte einen zusätzlichen Proxy-Server. Das war der Grund, hier auf eine
-Chrome-Erweiterung statt auf eine eigenständige Web-App zu setzen.
+Die Parser, Modelle und die Kalender-Logik sind **byte-identisch** mit der bereits gegen echte
+nuLiga-Seiten verifizierten und automatisiert getesteten Chrome-Erweiterungs-Version (26 Tests).
+Für den Wechsel auf IndexedDB wurde zusätzlich eine eigene Integrationstest-Suite (6 Tests, u.a.
+gegen eine simulierte IndexedDB und einen simulierten CORS-Proxy) erstellt und erfolgreich
+durchlaufen.
 
 ## Bekannte Einschränkungen
 
-- **Scope**: fest auf den Handballverband Niedersachsen-Bremen
-  (`hvnb-handball.liga.nu`) zugeschnitten (`host_permissions` in `manifest.json`).
-  Der `courtInfo`-Abruf für Hallenadressen verwendet zusätzlich fest
-  `federation=HVNB` (siehe `repository.js`, `getVenue`).
-- **Teams hinzufügen**: nur per eingefügtem Link, keine In-App-Suche nach Vereinen
-  (nuLigas Vereinssuche ist eine zustandsbehaftete Formular-Seite).
-- **Spieldauer im Kalendereintrag**: nuLiga liefert keine Spieldauer, daher wird
-  pauschal mit 90 Minuten gerechnet.
-- **Hintergrund-Sync nur bei laufendem Chrome**: `chrome.alarms` weckt den
-  Service Worker zuverlässig auf, aber nur solange Chrome läuft (auch im
-  Hintergrund/minimiert reicht das; ist Chrome komplett geschlossen, pausiert der
-  Sync bis zum nächsten Start).
-- Keine Synchronisierung zwischen mehreren Rechnern/Chrome-Profilen – alle Daten
-  liegen nur lokal in `chrome.storage.local` dieses einen Chrome-Profils.
-
-## Für Entwickler: Tests
-
-Die Parser- und Repository-Logik ist mit einer kleinen Node.js/jsdom-Testsuite
-gegen reale, live von nuLiga entnommene HTML-Beispiele abgesichert (nicht Teil
-dieses Ordners, da für den Betrieb der Erweiterung nicht nötig). Bei Änderungen an
-`src/parsers/` oder `src/data/repository.js` empfiehlt es sich, äquivalente Tests
-aufzusetzen (jsdom als DOMParser-Ersatz, `chrome.storage.local` und `fetch` mocken).
+- **Scope**: wie die anderen Varianten fest auf den Handballverband Niedersachsen-Bremen
+  (`hvnb-handball.liga.nu`) zugeschnitten.
+- **CORS-Proxy-Abhängigkeit**: siehe oben – der einzige Punkt, an dem diese Variante von einem
+  externen Dienst abhängt.
+- **Kein Kontextmenü** wie bei der Chrome-Erweiterung (Rechtsklick auf einen Link → Hinzufügen) –
+  dafür aber die Web-Share-Funktion (siehe oben), die auf Android ohnehin die natürlichere
+  Bedienung ist.
+- Hintergrund-Sync ist best-effort (siehe oben), nicht garantiert wie bei der nativen App.
