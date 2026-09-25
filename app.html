@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Handball Favoriten</title>
+  <link rel="icon" href="icons/icon48.png" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <button id="backBtn" class="icon-btn" title="Zurück" aria-label="Zurück" hidden>←</button>
+      <h1 id="pageTitle">Handball Favoriten</h1>
+      <div class="topbar-actions" id="topbarActions"></div>
+    </div>
+  </header>
+
+  <main id="app-root" class="app-root" aria-live="polite"></main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

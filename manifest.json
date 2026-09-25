@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Handball Favoriten (HVNB)",
+  "version": "1.0.0",
+  "description": "Favoriten-Mannschaften aus dem HVNB-nuLiga (hvnb-handball.liga.nu) mit Spielplan, Tabelle, Statistiken, Spielorten und Kalender-Export.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Handball Favoriten",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "alarms",
+    "notifications",
+    "tabs",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "https://hvnb-handball.liga.nu/*",
+    "http://hvnb-handball.liga.nu/*"
+  ]
+}

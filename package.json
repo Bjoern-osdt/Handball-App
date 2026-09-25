@@ -1,0 +1,6 @@
+{
+  "name": "handball-favoriten-web",
+  "private": true,
+  "type": "module",
+  "description": "Chrome-Erweiterung (Manifest V3) - kein Build-Schritt nötig, alle .js-Dateien sind reine ES-Module. package.json existiert nur, damit Tools/Editoren die Dateien korrekt als ESM erkennen."
+}
